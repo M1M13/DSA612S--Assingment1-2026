@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Library and Resource Management System</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background-color: #f2f2f2;
+  }
+  h1 {
+    color: #2c3e50;
+  }
+  h2 {
+    color: #2c3e50;
+    margin-top: 30px;
+  }
+  .box {
+    background-color: white;
+    border: 1px solid #ccc;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+    font-size: 14px;
+  }
+  th {
+    background-color: #34495e;
+    color: white;
+  }
+  input, select {
+    padding: 5px;
+    margin: 3px 0;
+    width: 200px;
+  }
+  label {
+    display: inline-block;
+    width: 130px;
+  }
+  button {
+    padding: 6px 12px;
+    margin: 5px 3px 5px 0;
+    background-color: #2c3e50;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  button:hover {
+    background-color: #34495e;
+  }
+  .status-AVAILABLE { color: green; font-weight: bold; }
+  .status-LOANED_OUT { color: orange; font-weight: bold; }
+  .status-UNDER_MAINTENANCE { color: red; font-weight: bold; }
+  .status-OCCUPIED { color: blue; font-weight: bold; }
+  .status-DISPOSED { color: gray; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h1>Library and Resource Management System</h1>
+<p>Web client</p>
+
+<!-- ============ VIEW ASSETS ============ -->
+<div class="box">
+  <h2>1. View Assets</h2>
+  <button onclick="loadAssets()">Show All Assets</button>
+
+  Filter by:
+  <select id="filterType">
+    <option value="institution">Institution</option>
+    <option value="site">Site</option>
+  </select>
+  <input type="text" id="filterValue" placeholder="value to filter by">
+  <button onclick="filterAssets()">Filter</button>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Asset Tag</th>
+        <th>Name</th>
+        <th>Institution</th>
+        <th>Site</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="assetRows"></tbody>
+  </table>
+</div>
+
+<!-- ============ ADD ASSET ============ -->
+<div class="box">
+  <h2>2. Add New Asset</h2>
+  <label>Asset Tag:</label> <input id="newTag"><br>
+  <label>Name:</label> <input id="newName"><br>
+  <label>Description:</label> <input id="newDesc"><br>
+  <label>Institution:</label> <input id="newInst"><br>
+  <label>Site:</label> <input id="newSite"><br>
+  <label>Date Acquired:</label> <input type="date" id="newDate"><br>
+  <label>Status:</label>
+  <select id="newStatus">
+    <option>AVAILABLE</option>
+    <option>LOANED_OUT</option>
+    <option>OCCUPIED</option>
+    <option>UNDER_MAINTENANCE</option>
+    <option>DISPOSED</option>
+  </select><br>
+  <button onclick="addAsset()">Add Asset</button>
+</div>
+
+<!-- ============ LOAN / RETURN ============ -->
+<div class="box">
+  <h2>3. Loan / Return an Asset</h2>
+  <label>Asset Tag:</label> <input id="loanTag"><br>
+  <button onclick="loanAsset()">Loan / Book Out</button>
+  <button onclick="returnAsset()">Return</button>
+</div>
+
+<!-- ============ SCHEDULES ============ -->
+<div class="box">
+  <h2>4. Schedules</h2>
+  <label>Asset Tag:</label> <input id="schedTag"><br>
+  <label>Schedule ID:</label> <input id="schedId"><br>
+  <label>Type:</label>
+  <select id="schedType">
+    <option>BOOKING</option>
+    <option>MAINTENANCE</option>
+    <option>SERVICING</option>
+  </select><br>
+  <label>Due Date:</label> <input type="date" id="schedDue"><br>
+  <label>Description:</label> <input id="schedDesc"><br>
+  <button onclick="addSchedule()">Add Schedule</button>
+  <button onclick="removeSchedule()">Remove Schedule</button>
+  <button onclick="completeSchedule()">Mark Complete</button>
+</div>
+
+<!-- ============ INSTITUTIONS ============ -->
+<div class="box">
+  <h2>5. Institutions</h2>
+  <button onclick="loadInstitutions()">List Institutions</button>
+  <ul id="instList"></ul>
+  <label>New Institution:</label> <input id="instName"><br>
+  <button onclick="addInstitution()">Add</button>
+  <button onclick="removeInstitution()">Remove</button>
+</div>
+
+<!-- ============ OVERDUE ============ -->
+<div class="box">
+  <h2>6. Overdue Dashboard</h2>
+  <button onclick="loadOverdue()">Check Overdue Assets</button>
+  <ul id="overdueList"></ul>
+</div>
+
+<script>
+
+function apiUrl() {
+  return document.getElementById("apiUrl").value;
+}
+
+// ---------- assets ----------
+
+function loadAssets() {
+  fetch(apiUrl() + "/assets")
+    .then(res => res.json())
+    .then(function(data) {
+      document.getElementById("statusMsg").innerHTML = " (connected)";
+      showAssets(data);
+    })
+    .catch(function(err) {
+      document.getElementById("statusMsg").innerHTML = " (could not connect)";
+      alert("Error: " + err);
+    });
+}
+
+function filterAssets() {
+  var type = document.getElementById("filterType").value;
+  var value = document.getElementById("filterValue").value;
+  fetch(apiUrl() + "/assets/" + type + "/" + value)
+    .then(res => res.json())
+    .then(showAssets)
+    .catch(err => alert("Error: " + err));
+}
+
+function showAssets(assets) {
+  var rows = document.getElementById("assetRows");
+  rows.innerHTML = "";
+  for (var i = 0; i < assets.length; i++) {
+    var a = assets[i];
+    var row = document.createElement("tr");
+    row.innerHTML =
+      "<td>" + a.assetTag + "</td>" +
+      "<td>" + a.name + "</td>" +
+      "<td>" + a.institution + "</td>" +
+      "<td>" + a.site + "</td>" +
+      "<td class='status-" + a.status + "'>" + a.status + "</td>" +
+      "<td><button onclick=\"deleteAsset('" + a.assetTag + "')\">Delete</button></td>";
+    rows.appendChild(row);
+  }
+}
+
+function addAsset() {
+  var asset = {
+    assetTag: document.getElementById("newTag").value,
+    name: document.getElementById("newName").value,
+    description: document.getElementById("newDesc").value,
+    institution: document.getElementById("newInst").value,
+    site: document.getElementById("newSite").value,
+    status: document.getElementById("newStatus").value,
+    dateAcquired: document.getElementById("newDate").value,
+    components: [],
+    schedules: [],
+    workOrders: []
+  };
+
+  fetch(apiUrl() + "/assets", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(asset)
+  })
+    .then(function(res) {
+      return res.json().then(function(data) {
+        if (res.ok) {
+          alert("Added.");
+          loadAssets();
+        } else {
+          alert("Not added: " + data.message);
+        }
+      });
+    })
+    .catch(err => alert("Error: " + err));
+}
+
+function deleteAsset(tag) {
+  fetch(apiUrl() + "/assets/" + tag, { method: "DELETE" })
+    .then(function(res) {
+      return res.json().then(function(data) {
+        if (res.ok) {
+          loadAssets();
+        } else {
+          alert("Not deleted: " + data.message);
+        }
+      });
+    })
+    .catch(err => alert("Error: " + err));
+}
+
+// ---------- loan / return ----------
+
+function loanAsset() {
+  var tag = document.getElementById("loanTag").value;
+  fetch(apiUrl() + "/assets/" + tag + "/loan", { method: "PUT" })
+    .then(function(res) {
+      return res.json().then(function(data) {
+        if (res.ok) {
+          alert("Loaned out.");
+          loadAssets();
+        } else {
+          alert("Could not loan: " + data.message);
+        }
+      });
+    })
+    .catch(err => alert("Error: " + err));
+}
+
+function returnAsset() {
+  var tag = document.getElementById("loanTag").value;
+  fetch(apiUrl() + "/assets/" + tag + "/return", { method: "PUT" })
+    .then(function(res) {
+      return res.json().then(function(data) {
+        if (res.ok) {
+          alert("Returned.");
+          loadAssets();
+        } else {
+          alert("Could not return: " + data.message);
+        }
+      });
+    })
+    .catch(err => alert("Error: " + err));
+}
+
+// ---------- schedules ----------
+
+function addSchedule() {
+  var tag = document.getElementById("schedTag").value;
+  var schedule = {
+    scheduleId: document.getElementById("schedId").value,
+    type: document.getElementById("schedType").value,
+    dueDate: document.getElementById("schedDue").value,
+    description: document.getElementById("schedDesc").value,
+    completed: false
+  };
+
+  fetch(apiUrl() + "/assets/" + tag + "/schedules", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(schedule)
+  })
+    .then(function(res) {
+      return res.json().then(function(data) {
+        if (res.ok) {
+          alert("Schedule added.");
+        } else {
+          alert("Not added: " + data.message);
+        }
+      });
+    })
+    .catch(err => alert("Error: " + err));
+}
+
+function removeSchedule() {
+  var tag = document.getElementById("schedTag").value;
+  var id = document.getElementById("schedId").value;
+  fetch(apiUrl() + "/assets/" + tag + "/schedules/" + id, { method: "DELETE" })
+    .then(function(res) {
+      return res.json().then(function(data) {
+        if (res.ok) {
+          alert("Schedule removed.");
+        } else {
+          alert("Not removed: " + data.message);
+        }
+      });
+    })
+    .catch(err => alert("Error: " + err));
+}
+
+function completeSchedule() {
+  var tag = document.getElementById("schedTag").value;
+  var id = document.getElementById("schedId").value;
+  fetch(apiUrl() + "/assets/" + tag + "/schedules/" + id + "/complete", { method: "PUT" })
+    .then(function(res) {
+      return res.json().then(function(data) {
+        if (res.ok) {
+          alert("Marked complete.");
+        } else {
+          alert("Could not mark complete: " + data.message);
+        }
+      });
+    })
+    .catch(err => alert("Error: " + err));
+}
+
+// ---------- institutions ----------
+
+function loadInstitutions() {
+  fetch(apiUrl() + "/institutions")
+    .then(res => res.json())
+    .then(function(names) {
+      var list = document.getElementById("instList");
+      list.innerHTML = "";
+      for (var i = 0; i < names.length; i++) {
+        var li = document.createElement("li");
+        li.innerText = names[i];
+        list.appendChild(li);
+      }
+    })
+    .catch(err => alert("Error: " + err));
+}
+
+function addInstitution() {
+  var name = document.getElementById("instName").value;
+  fetch(apiUrl() + "/institutions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: name })
+  })
+    .then(function(res) {
+      return res.json().then(function(data) {
+        if (res.ok) {
+          alert("Institution added.");
+          loadInstitutions();
+        } else {
+          alert("Not added: " + data.message);
+        }
+      });
+    })
+    .catch(err => alert("Error: " + err));
+}
+
+function removeInstitution() {
+  var name = document.getElementById("instName").value;
+  fetch(apiUrl() + "/institutions/" + name, { method: "DELETE" })
+    .then(function(res) {
+      return res.json().then(function(data) {
+        if (res.ok) {
+          alert("Institution removed.");
+          loadInstitutions();
+        } else {
+          alert("Not removed: " + data.message);
+        }
+      });
+    })
+    .catch(err => alert("Error: " + err));
+}
+
+// ---------- overdue ----------
+
+function loadOverdue() {
+  fetch(apiUrl() + "/assets/overdue")
+    .then(res => res.json())
+    .then(function(assets) {
+      var list = document.getElementById("overdueList");
+      list.innerHTML = "";
+      if (assets.length === 0) {
+        var li = document.createElement("li");
+        li.innerText = "Nothing overdue";
+        list.appendChild(li);
+        return;
+      }
+      for (var i = 0; i < assets.length; i++) {
+        var li = document.createElement("li");
+        li.innerText = assets[i].assetTag + " - " + assets[i].name;
+        list.appendChild(li);
+      }
+    })
+    .catch(err => alert("Error: " + err));
+}
+
+loadAssets();
+
+</script>
+
+</body>
+</html>

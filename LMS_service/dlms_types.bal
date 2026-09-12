@@ -1,4 +1,4 @@
-// ----- Resource types & statuses -----
+// Resource types and statuses 
 
 public enum ResourceType {
     BOOK,

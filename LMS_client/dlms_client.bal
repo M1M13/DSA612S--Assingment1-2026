@@ -166,7 +166,7 @@ function CampusViewRequest() returns error? {
 
 function OverdueDashboardRequest() returns error? {
     io:println("");
-    io:println("===== Overdue Dashboard =====");
+    io:println(" Overdue Dashboard ");
 
     io:println("");
     io:println("-- Overdue Maintenance/Servicing --");
@@ -453,7 +453,7 @@ function AddComponentRequest() returns error? {
     io:println("");
 }
 
-public function clientMain() returns error? {
+public function main() returns error? {
     boolean cont = true;
 
     while cont {

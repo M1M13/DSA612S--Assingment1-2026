@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package rental;
+
+service RentalService {
+  rpc add_property(AddPropertyRequest) returns (AddPropertyResponse);
+  rpc update_property(UpdatePropertyRequest) returns (UpdatePropertyResponse);
+  rpc remove_property(RemovePropertyRequest) returns (RemovePropertyResponse);
+  rpc search_property(SearchPropertyRequest) returns (SearchPropertyResponse);
+  rpc book_property(BookPropertyRequest) returns (BookPropertyResponse);
+  rpc confirm_booking(ConfirmBookingRequest) returns (ConfirmBookingResponse);
+  rpc create_users(stream CreateUserRequest) returns (CreateUsersResponse);
+  rpc list_available_properties(ListAvailableRequest) returns (stream PropertyMessage);
+}
+
+message AddPropertyRequest {
+  string host_id         = 1;
+  string property_name   = 2;
+  string location        = 3;
+  string property_type   = 4;
+  double price_per_night = 5;
+  string status          = 6;
+}
+
+message AddPropertyResponse {
+  string property_id = 1;
+  string message     = 2;
+}
+
+message CreateUserRequest {
+  string user_id   = 1;
+  string user_name = 2;
+  string role      = 3;
+  string email     = 4;
+}
+
+message CreateUsersResponse {
+  int32  total_created = 1;
+  string message       = 2;
+}
+
+message UpdatePropertyRequest {
+  string property_id     = 1;
+  double price_per_night = 2;
+  string status          = 3;
+}
+
+message UpdatePropertyResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message RemovePropertyRequest {
+  string property_id = 1;
+  string host_id      = 2;
+}
+
+message RemovePropertyResponse {
+  bool   success                      = 1;
+  string message                      = 2;
+  repeated PropertyMessage properties = 3;
+}
+
+message ListAvailableRequest {
+  string location  = 1;
+  double min_price = 2;
+  double max_price = 3;
+}
+
+message PropertyMessage {
+  string property_id     = 1;
+  string host_id         = 2;
+  string property_name   = 3;
+  string location        = 4;
+  string property_type   = 5;
+  double price_per_night = 6;
+  string status          = 7;
+}
+
+message SearchPropertyRequest {
+  string property_id = 1;
+}
+
+message SearchPropertyResponse {
+  bool            found    = 1;
+  string          status   = 2;
+  PropertyMessage property = 3;
+}
+
+message BookPropertyRequest {
+  string guest_id    = 1;
+  string property_id = 2;
+  string check_in    = 3;
+  string check_out   = 4;
+}
+
+message BookPropertyResponse {
+  bool   success     = 1;
+  string message     = 2;
+  string booking_ref  = 3;
+}
+
+message ConfirmBookingRequest {
+  string guest_id = 1;
+}
+
+message ConfirmBookingResponse {
+  bool   success       = 1;
+  string message       = 2;
+  string booking_id    = 3;
+  double total_cost    = 4;
+  int32  nights        = 5;
+  string property_name = 6;
+  string check_in      = 7;
+  string check_out     = 8;
+}
